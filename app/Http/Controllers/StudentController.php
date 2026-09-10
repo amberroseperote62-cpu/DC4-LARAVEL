@@ -8,9 +8,18 @@ use Illuminate\Http\Request;
 class StudentController extends Controller
 {
     // GET /api/students — return all students
-    public function index()
+    // Bonus: supports ?course=BSIT filtering and pagination (10 per page)
+    public function index(Request $request)
     {
-        $students = Student::all();
+        $query = Student::query();
+
+        // Bonus: search/filter by course, e.g. GET /api/students?course=BSIT
+        if ($request->has('course')) {
+            $query->where('course', $request->query('course'));
+        }
+
+        // Bonus: paginate results, 10 students per page
+        $students = $query->paginate(10);
 
         return response()->json([
             'success' => true,
@@ -21,7 +30,17 @@ class StudentController extends Controller
     // POST /api/students — create a new student
     public function store(Request $request)
     {
-        $student = Student::create($request->all());
+        // Bonus: validation — rejects requests with missing required fields
+        $validated = $request->validate([
+            'student_no' => 'required|string|max:20|unique:students,student_no',
+            'first_name' => 'required|string|max:100',
+            'last_name'  => 'required|string|max:100',
+            'course'     => 'required|string|max:50',
+            'year_level' => 'required|integer|min:1|max:4',
+            'email'      => 'nullable|email|max:150',
+        ]);
+
+        $student = Student::create($validated);
 
         return response()->json([
             'success' => true,
@@ -57,7 +76,17 @@ class StudentController extends Controller
             ], 404);
         }
 
-        $student->update($request->all());
+        // Bonus: validation — 'sometimes' means only validate fields that are actually sent
+        $validated = $request->validate([
+            'student_no' => 'sometimes|required|string|max:20|unique:students,student_no,' . $id,
+            'first_name' => 'sometimes|required|string|max:100',
+            'last_name'  => 'sometimes|required|string|max:100',
+            'course'     => 'sometimes|required|string|max:50',
+            'year_level' => 'sometimes|required|integer|min:1|max:4',
+            'email'      => 'nullable|email|max:150',
+        ]);
+
+        $student->update($validated);
 
         return response()->json([
             'success' => true,
